@@ -1,0 +1,18 @@
+#pragma once
+
+#include <Arduino.h>
+
+#define SERVO_0_PIN GPIO_NUM_45
+#define SERVO_1_PIN GPIO_NUM_46
+
+#define DS18B20_PIN GPIO_NUM_36
+#define FAN_PIN GPIO_NUM_37
+#define HEATER_PIN GPIO_NUM_38
+
+#define I2C_MASTER_SDA_PIN GPIO_NUM_1
+#define I2C_MASTER_SCL_PIN GPIO_NUM_2
+
+#define I2C_MUX_SDA_PIN GPIO_NUM_4
+#define I2C_MUX_SCL_PIN GPIO_NUM_5
+
+#define SERIAL_BAUD_RATE 921600
