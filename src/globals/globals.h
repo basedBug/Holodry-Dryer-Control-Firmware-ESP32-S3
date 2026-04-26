@@ -9,8 +9,8 @@
 // Neccesary globals
 
 extern QueueHandle_t xSensorDataQueue;
-extern MessageBufferHandle_t xSensorManagerToCommsManager;
-extern MessageBufferHandle_t xCommsManagerToSensorManager;
+extern MessageBufferHandle_t xSysStateManagerToCommsManager;
+extern MessageBufferHandle_t xCommsManagerToSysStateManager;
 
 constexpr size_t SENSOR_DATA_QUEUE_SIZE = 1;
 constexpr size_t MAX_MSG_SIZE = 1024;
