@@ -16,6 +16,24 @@ void setup()
 
 	vTaskDelay(pdMS_TO_TICKS(2000)); // A little delay to permit me to connect the damn serial to my logger
 	
+	xSensorDataQueue = xQueueCreate(SENSOR_DATA_QUEUE_SIZE, sizeof(SystemSensors));
+	if (!xSensorDataQueue)
+	{
+		Serial.println("[RTOS] Failed to create SensorData queue");
+	}
+
+	xSysStateManagerToPidManagerQueue = xQueueCreate(PID_CONTROL_QUEUE_SIZE, sizeof(HeaterPidControl));
+	if (!xSysStateManagerToPidManagerQueue)
+	{
+		Serial.println("[RTOS] Failed to create PidControl queue");
+	}
+
+	xPidManagerToSysStateManagerQueue = xQueueCreate(PID_CONTROL_QUEUE_SIZE, sizeof(HeaterPidControl));
+	if (!xPidManagerToSysStateManagerQueue)
+	{
+		Serial.println("[RTOS] Failed to create PidControl queue");
+	}
+
 	xSensorManagerToCommsManager = xMessageBufferCreate(MSG_BUFFER_SIZE);
 	if (!xSensorManagerToCommsManager)
 	{
@@ -26,12 +44,6 @@ void setup()
 	if (!xCommsManagerToSensorManager)
 	{
 		Serial.println("[RTOS] Failed to create CommsManager to SensorManager message buffer");
-	}
-
-	xSensorDataQueue = xQueueCreate(SENSOR_DATA_QUEUE_SIZE, sizeof(SystemSensors));
-	if (!xSensorDataQueue)
-	{
-		Serial.println("[RTOS] Failed to create SensorData queue");
 	}
 	
 	// Create tasks, they start by themselves
