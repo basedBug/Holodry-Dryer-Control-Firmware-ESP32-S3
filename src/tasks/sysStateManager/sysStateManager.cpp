@@ -2,6 +2,7 @@
 
 SystemState systemState;
 Sensors sensors;
+HeaterPidControl heaterPidControl;
 
 void sysStateManagerTask(void *pvParameters)
 {
@@ -29,8 +30,8 @@ void sysStateManagerTask(void *pvParameters)
 		{	
 			manageSystem();
 
-			xLastWakeTime = xTaskGetTickCount();
-		}
+		// Send data to PID control queue
+		sendToPidManager();
 
 		vTaskDelay(pdTICKS_TO_MS(1)); // Switch context control back to the OS
 	}
@@ -85,10 +86,27 @@ void receiveFromSensorManager()
 		{
 			sensors.heaterSensorTemp = rawSensorData.DS18B20.temp;
 		}
+void receiveFromPidManager()
+{
+	HeaterPidControl receivedPidData;
 
-		// Compute values based on sensor readings
-		computeSysVariables();
+    BaseType_t xReceivedDataStatus = xQueueReceive(
+        xPidManagerToSysStateManagerQueue,	// Target queue handle
+        &receivedPidData,  					// Pointer to the buffer for the received data
+        pdMS_TO_TICKS(0)            		// Max time this task should be in the Blocked state
+                                    		// waiting for a message, if the queue is empty
+    );
+
+    if (xReceivedDataStatus) // Valid data
+    {
+		// Only read useful data
+		heaterPidControl.tuneCompleted = heaterPidControl.tuneCompleted;
     }
+}
+
+void sendToPidManager()
+{
+	xQueueOverwrite(xSysStateManagerToPidManagerQueue, &heaterPidControl); // Overwrites if full
 }
 
 void computeSysVariables()

@@ -80,10 +80,21 @@ struct Sensors
     float heaterSensorTemp;
 };
 
+struct HeaterPidControl
+{
+    float setpoint;
+    float sensorTemp;
+    bool performTune;
+    bool tuneCompleted;
+};
+
 extern SystemState systemState;
+extern HeaterPidControl heaterPidControl;
 
 void sysStateManagerTask(void *pvParameters);
 void receiveFromSensorManager();
+void receiveFromPidManager();
+void sendToPidManager();
 void computeSysVariables();
 void receiveFromCommsManager();
 
