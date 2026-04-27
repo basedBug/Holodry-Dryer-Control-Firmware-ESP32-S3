@@ -2,14 +2,14 @@
 
 void JsonHandlers::printJsonContents(const JsonDocument &doc)
 {
-    Serial.print(F("[Web] "));
+    Serial.print(F("[commsManager] "));
     Serial.println(F("Received JSON from server:"));
     printJsonObjectContents(doc.as<JsonObjectConst>(), 0);
 }
 
 void JsonHandlers::printJsonObjectContents(JsonObjectConst obj, int indentLevel)
 {
-    Serial.print(F("[Web] "));
+    Serial.print(F("[commsManager] "));
     // Print opening brace with proper indentation
     printIndent(indentLevel);
     Serial.println(F("{"));    
@@ -22,7 +22,7 @@ void JsonHandlers::printJsonObjectContents(JsonObjectConst obj, int indentLevel)
         const char *key = keyvalue.key().c_str();
         JsonVariantConst value = keyvalue.value();
         
-        Serial.print(F("[Web] "));
+        Serial.print(F("[commsManager] "));
         // Print key with proper indentation
         printIndent(indentLevel + 1);
         Serial.print('"');
@@ -40,7 +40,7 @@ void JsonHandlers::printJsonObjectContents(JsonObjectConst obj, int indentLevel)
         }
     }
     
-    Serial.print(F("[Web] "));
+    Serial.print(F("[commsManager] "));
     // Print closing brace with proper indentation
     printIndent(indentLevel);
     Serial.print('}');
@@ -52,7 +52,7 @@ void JsonHandlers::printJsonObjectContents(JsonObjectConst obj, int indentLevel)
 
 void JsonHandlers::printJsonArrayContents(const JsonArrayConst &arr, int indentLevel = 0)
 {
-    Serial.print(F("[Web] "));
+    Serial.print(F("[commsManager] "));
     printIndent(indentLevel);
     Serial.println('[');
     
@@ -61,7 +61,7 @@ void JsonHandlers::printJsonArrayContents(const JsonArrayConst &arr, int indentL
     
     for (JsonVariantConst value : arr)
     {
-        Serial.print(F("[Web] "));
+        Serial.print(F("[commsManager] "));
         printIndent(indentLevel + 1);
         handleJsonValue(value, indentLevel + 1);
         
@@ -73,7 +73,7 @@ void JsonHandlers::printJsonArrayContents(const JsonArrayConst &arr, int indentL
         }
     }
     
-    Serial.print(F("[Web] "));
+    Serial.print(F("[commsManager] "));
     printIndent(indentLevel);
     Serial.print(']');
 }
@@ -124,7 +124,7 @@ void JsonHandlers::handleJsonValue(JsonVariantConst value, int indentLevel)
 
 void JsonHandlers::printIndent(int level)
 {
-    // Print spaces for indentation (after [Web] prefix)
+    // Print spaces for indentation (after [taskName] prefix)
     for (int i = 0; i < level * 2; i++) {
         Serial.print(' ');
     }
