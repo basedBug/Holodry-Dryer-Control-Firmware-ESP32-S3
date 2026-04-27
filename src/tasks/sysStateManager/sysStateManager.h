@@ -2,6 +2,7 @@
 
 #include "../src/globals/globals.h"
 #include "../sensorManager/sensorManager.h"
+#include "../src/utilities/jsonHandlers.h"
 #include "actuators.h"
 #include "thermodynamics.h"
 #include "ArduinoJson.h"
@@ -13,7 +14,7 @@ enum class SystemStatus : uint8_t
     DRYING,
     VENTING,
     EMERGENCY_VENTING,
-    TESTING_MODE,
+    MANUAL_MODE,
     SHOWCASE_MODE,
     UNKNOWN
 };
@@ -42,7 +43,7 @@ struct FilamentState
 struct SystemConfig
 {
     float targetChamberTemp;
-    float maxAllowedChamberTemp;
+    float maxAllowedFilamentTemp;
     float targetRelHum;
 };
 
@@ -99,5 +100,15 @@ void computeSysVariables();
 void receiveFromCommsManager();
 
 void manageSystem();
+void registerSysStatusChange(SystemStatus status);
+
+void getSysStateData(JsonObject &payload);
+void getSensorData(JsonObject &payload);
+
+void loadDataToSend(JsonObject &payload);
+bool sendToCommsManager(JsonDocument &doc);
+void sendDataToCommsManager();
+void handleReceivedCmds();
+
 SystemStatus sysStatusStrTosysStatus(const char* str);
 const char* sysStatusToSysStatusStr(SystemStatus status);

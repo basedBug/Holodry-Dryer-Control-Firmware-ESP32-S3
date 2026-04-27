@@ -1,16 +1,32 @@
 #include "sysStateManager.h"
 
 SystemState systemState;
+SystemStatus lastSystemStatus;
+bool showcaseMode = false;
+
 Sensors sensors;
 HeaterPidControl heaterPidControl;
+
+// Default ventilation time interval
+TickType_t xVentilationTimeInterval = pdMS_TO_TICKS(VENTILATION_TIME_INTERVAL);
+
+TickType_t xLastWakeTime; // May not be needed
 
 void sysStateManagerTask(void *pvParameters)
 {
     Serial.println("[sysStateManager] Task started");
 
-	systemState.systemStatus = SystemStatus::IDLE; // Init state to idle
+	// Change to actuators init
+	while(!Actuators::initActuators())
+    {
+        // Try to reinitialize
+        Serial.println("[sysStateManager] Error: Actuators initialization failed");
+        Serial.println("[sysStateManager] Trying reinitialization");
+    }
 
-    TickType_t xLastWakeTime;
+	// Init system state to idle
+	systemState.systemStatus = SystemStatus::IDLE;
+
 	const TickType_t xTimeInterval = pdMS_TO_TICKS(10); // 10ms
 
 	// Initialise the xLastWakeTime variable with the current time.
@@ -22,20 +38,29 @@ void sysStateManagerTask(void *pvParameters)
 	*/
 	while (true)
 	{
-		receiveFromSensorManager();
+		/*
+			Dismis real sensor readings in SHOWCASE_MODE, as we use simulated sensor values sent from
+			the master controller (Raspberry Pi 4)
+		*/
+		if (!showcaseMode)
+		{
+			receiveFromSensorManager();
+		}
+
+		// Compute values based on received sensor readings
+		computeSysVariables();
+
 		receiveFromCommsManager();
 
-		// This time interval may need to be removed
-		if (xTaskGetTickCount() - xLastWakeTime >= xTimeInterval)
-		{	
-			manageSystem();
+		manageSystem();
 
 		// Send data to PID control queue
 		sendToPidManager();
 
+		sendDataToCommsManager();
+
 		vTaskDelay(pdTICKS_TO_MS(1)); // Switch context control back to the OS
 	}
-    
 }
 
 void receiveFromSensorManager()
@@ -86,6 +111,9 @@ void receiveFromSensorManager()
 		{
 			sensors.heaterSensorTemp = rawSensorData.DS18B20.temp;
 		}
+    }
+}
+
 void receiveFromPidManager()
 {
 	HeaterPidControl receivedPidData;
@@ -127,69 +155,138 @@ void computeSysVariables()
 	systemState.filamentState.maxFilamentTemp = max(sensors.filamentSurfaceTemp_0, sensors.filamentSurfaceTemp_1);
 	systemState.filamentState.avgFilamentTemp = (sensors.filamentSurfaceTemp_0 + sensors.filamentSurfaceTemp_1)/2.0;
 
+	// Actuators state (only heater, all others are updated at actuators.cpp)
+	systemState.actuatorsStatus.heaterTemp = sensors.heaterSensorTemp;
+
 	// Absolute humidity
-	systemState.exteriorAbsHum = absHumidity(
+	systemState.exteriorAbsHum = Thermodynamics::absHumidity(
 		systemState.ambientState.ambientSensorTemp, 
 		systemState.ambientState.ambientSensorHum
 	);
-	systemState.interiorAbsHum = absHumidity(
+	systemState.interiorAbsHum = Thermodynamics::absHumidity(
 		systemState.chamberState.avgChamberSensorTemp, 
 		systemState.chamberState.avgChamberSensorHum
 	);
 }
 
-void receiveFromCommsManager()
-{
-	
-}
-
 void manageSystem()
 {
-	// System state machine to change states
+	// May need to also track last systemStatus
+	registerSysStatusChange(systemState.systemStatus);
 	switch (systemState.systemStatus)
 	{
+		// Maybe implement a first time drying pass to detect humidity
 		case SystemStatus::IDLE :
 		{
+			/*
+				Main/default system state
+					Only changes to drying mode if: 
+						- The chamber relative humidity is high enough that the air is saturated enough 
+						  (based on user input). 
+						- OR if the master controller demands it (failure in filament detected), at 
+						  which point it will just force the system state to drying
+			*/
+
 			// Set actuators to secure states
-			// Deactivate heater
-			ActuatorManager::deactivateFan();
-			ActuatorManager::closeVents();
-			
+			heaterPidControl.setpoint = 0; // Turn off the heater
+			Actuators::deactivateFan();
+			Actuators::closeVents();
 
-			// Determine if user interface was set to testing or drying mode
-
-			// Activate drying if the master controller demands it (failure in filament detected)
-
+			/*
+				Start drying if the relative humidity is above target (no use in drying if the 
+				humidity is good enough for the user)
+			*/
 			if (systemState.chamberState.avgChamberSensorHum > systemState.systemConfig.targetRelHum)
 			{
 				// Activate drying
-				systemState.systemStatus = SystemStatus::DRYING;
+				systemState.systemStatus = SystemStatus::DRYING ;
 				break;
 			}
 			
 			break;
 		}
 
-		case SystemStatus::DRYING :
+		case SystemStatus::TUNING :
 		{
-			// Change to emergency venting if filament temp goes overboard
-			if (systemState.filamentState.maxFilamentTemp > systemState.systemConfig.maxAllowedChamberTemp)
+			/*
+				Only tunes the pid controller, nothing else
+			*/
+
+			if (lastSystemStatus != SystemStatus::TUNING)
 			{
-				// Max allowable filament surface temp reached
-				systemState.systemStatus = SystemStatus::EMERGENCY_VENTING;
+				// Set setpoint again in here just to make sure it has it before starting the tuning
+				heaterPidControl.setpoint = systemState.systemConfig.targetChamberTemp;
+				heaterPidControl.performTune = true;
+			}
+			
+			if (heaterPidControl.tuneCompleted)
+			{
+				// Reset the flag to be able to call tuning mode again
+				heaterPidControl.tuneCompleted = false;
+
+				if (showcaseMode)
+				{
+					// If tuning is done, go back SHOWCASE_MODE
+					systemState.systemStatus = SystemStatus::SHOWCASE_MODE ;
+					break;
+				}
+
+				// If tuning is done, go back to idle
+				systemState.systemStatus = SystemStatus::IDLE ;
+
 				break;
 			}
-			// Continue drying
+
+			break;
+		}
+
+		case SystemStatus::DRYING :
+		{
+			/*
+				Do the drying process
+			*/
+
+			// Change to emergency venting if filament temp goes overboard
+			if (systemState.filamentState.maxFilamentTemp > systemState.systemConfig.maxAllowedFilamentTemp)
+			{
+				// Max allowable filament surface temp reached
+				systemState.systemStatus = SystemStatus::EMERGENCY_VENTING ;
+				break;
+			}
 			
 			// Set target heater temp (if not already set/if deactivated)
+			heaterPidControl.setpoint = systemState.systemConfig.targetChamberTemp;
+
 			// Activate fan (to spread heat), may not be needed due the integrated fan on the heater
-			ActuatorManager::activateFan();
+			Actuators::activateFan();
 			
 			// Change to venting if theres a chance of drying the air
 			if (systemState.interiorAbsHum > systemState.exteriorAbsHum)
 			{
 				// Internal humidity > external, drying is possible by venting the chamber
-				systemState.systemStatus = SystemStatus::VENTING;
+				systemState.systemStatus = SystemStatus::VENTING ;
+				break;
+			}
+
+			/*
+				Stop drying if the relative humidity is below or at target (no use in drying if the 
+				humidity is good enough for the user)
+			*/
+			if (systemState.chamberState.avgChamberSensorHum <= systemState.systemConfig.targetRelHum)
+			{
+				// Stop drying
+
+				/*
+					If the SHOWCASE_MODE was the last one, switch back to it after drying
+				*/
+				if (showcaseMode)
+				{
+					systemState.systemStatus = SystemStatus::SHOWCASE_MODE ;
+					break;
+				}
+
+				systemState.systemStatus = SystemStatus::DRYING ;
+				break;
 			}
 				
 			break;
@@ -197,42 +294,69 @@ void manageSystem()
 
 		case SystemStatus::VENTING :
 		{
-			// Deactivate heater (would rather not waste power by unneccesary heating)
+			/*
+				Exchange air with the ambient to dry the interior
+			*/
+
+			// Turn off the heater (would rather not waste power by unneccesary heating)
+			heaterPidControl.setpoint = 0; 
+
 			// Open cooling vent
-			ActuatorManager::openVents();
+			Actuators::openVents();
 			// Activate fan
-			ActuatorManager::activateFan();
+			Actuators::activateFan();
 
 			// Wait to purge air (calculate or just a simple timer?)
+			if (xTaskGetTickCount() - xLastWakeTime >= xVentilationTimeInterval)
+			{	
+				// Deactivate fan
+				Actuators::deactivateFan();
+				// Close cooling vent
+				Actuators::closeVents();
 
-			// Deactivate fan
-			ActuatorManager::deactivateFan();
-			// Close cooling vent
-			ActuatorManager::closeVents();
+				// Change mode back to drying
+				systemState.systemStatus = SystemStatus::DRYING ;
 
-			// Change mode back to drying
-			systemState.systemStatus = SystemStatus::DRYING;
+				xLastWakeTime = xTaskGetTickCount();
+				break;
+			}
 
 			break;
 		}
 
 		case SystemStatus::EMERGENCY_VENTING :
 		{
+			/*
+				Force air venting to cool down the filament temperature when it reaches dangerous 
+				levels
+			*/
+
 			// Deactivate heater
+			heaterPidControl.setpoint = 0;
+
 			// Activate fan
-			ActuatorManager::activateFan();
+			Actuators::activateFan();
 			// Open cooling vent
-			ActuatorManager::openVents();
-			if (systemState.filamentState.maxFilamentTemp <= systemState.systemConfig.maxAllowedChamberTemp)
+			Actuators::openVents();
+
+			if (systemState.filamentState.maxFilamentTemp <= systemState.systemConfig.maxAllowedFilamentTemp)
 			{
 				// Deactivate fan
-				ActuatorManager::deactivateFan();
+				Actuators::deactivateFan();
 				// Heater must not be reactivated from here, it will be handled by the other modes
 				// Close cooling vent
-				ActuatorManager::closeVents();
+				Actuators::closeVents();
 				
+
+				if (showcaseMode)
+				{
+					// If tuning is done, go back SHOWCASE_MODE
+					systemState.systemStatus = SystemStatus::SHOWCASE_MODE ;
+					break;
+				}
+
 				// Change mode back to drying
-				systemState.systemStatus = SystemStatus::DRYING;
+				systemState.systemStatus = SystemStatus::DRYING ;
 				
 				break;
 			}
@@ -240,19 +364,53 @@ void manageSystem()
 			break;
 		}
 
-		case SystemStatus::TESTING_MODE :
+		case SystemStatus::MANUAL_MODE :
 		{
-			// Manual actuator controls
-			// Activate heater per user insctructions
-			// Activate fan per user instructions
-			// Toggle vent per user instructions
+			/*
+				Manual actuator controls
+					Activate heater per json cmd
+					Activate fan per json cmd
+					Toggle vent per json cmd
+				In essence, do nothing but respond to json cmds
+
+				WONT CHANGE TO OTHER MODES BY ITSELF !!!
+			*/
+
+			// We do NOTHING, NOTHING EVER HAPPENS
 
 			break;
 		}
 
 		case SystemStatus::SHOWCASE_MODE :
 		{
-			// Maybe feed simulated sensor readings to showcase usage quickly
+			/*
+				Handle only simulated sensor readings to showcase usage quickly
+
+				Does the same thing as IDLE
+			*/
+
+			/*
+				The reception of real sensor readings is deactivated
+
+				The simulated ones for the SHOWCASE_MODE are sent by the master controller (Rasperry Pi 4) through json
+				an are handled directly at json reception
+			*/
+
+			// Set actuators to secure states
+			heaterPidControl.setpoint = 0; // Turn off the heater
+			Actuators::deactivateFan();
+			Actuators::closeVents();
+
+			/*
+				Start drying if the relative humidity is above target (no use in drying if the 
+				humidity is good enough for the user)
+			*/
+			if (systemState.chamberState.avgChamberSensorHum > systemState.systemConfig.targetRelHum)
+			{
+				// Activate drying
+				systemState.systemStatus = SystemStatus::DRYING ;
+				break;
+			}
 
 			break;
 		}
@@ -260,7 +418,13 @@ void manageSystem()
 		default:
 		{
 			// Some undefined state tried to be invoked, default it to idle to avoid problems
-			systemState.systemStatus = SystemStatus::IDLE;
+			Serial.printf(
+				"[sysStateManager] Error: system status tried to be changed from %s to UNKNOWN, defaulting to IDLE \n",
+				sysStatusToSysStatusStr(lastSystemStatus)
+			);
+			lastSystemStatus = SystemStatus::UNKNOWN ;
+			systemState.systemStatus = SystemStatus::IDLE ;
+
 			break;
 		}
 	}
@@ -269,8 +433,347 @@ void manageSystem()
 
 }
 
-void sendToCommsManager()
+void registerSysStatusChange(SystemStatus status)
 {
+	if (lastSystemStatus != status)
+	{
+		Serial.printf(
+			"[sysStateManager] System status changed to %s \n", 
+			sysStatusToSysStatusStr(status)
+		);
+		lastSystemStatus = status;
+	}
+}
+
+void getSysStateData(JsonObject &payload)
+{
+	// Main object
+	JsonObject _systemState = payload["systemState"].to<JsonObject>();
+
+		JsonObject _systemStatus = _systemState["status"].to<JsonObject>();
+			_systemStatus["mainStatus"] = sysStatusToSysStatusStr(systemState.systemStatus);
+			_systemStatus["exteriorAbsHum"] = systemState.exteriorAbsHum;
+			_systemStatus["interiorAbsHum"] = systemState.interiorAbsHum;
+			
+		JsonObject _actuatorStatus = _systemState["actuatorStatus"].to<JsonObject>();
+			_systemStatus["heaterSetpoint"] = heaterPidControl.setpoint; // Maybe indicate if its tuning
+			_systemStatus["fan"] = Actuators::fanStatusToFanStatusStr(systemState.actuatorsStatus.fanStatus);
+			_systemStatus["vents"] = Actuators::ventsStatusToVentsStatusStr(systemState.actuatorsStatus.ventsStatus);
+
+		JsonObject _systemConfig = _systemState["systemConfig"].to<JsonObject>();
+			_systemConfig["targetChamberTemp"] = systemState.systemConfig.targetChamberTemp;
+			_systemConfig["maxAllowedFilamentTemp"] = systemState.systemConfig.maxAllowedFilamentTemp;
+			_systemConfig["targetRelHum"] = systemState.systemConfig.targetRelHum;
+		
+		JsonObject _chamberState = _systemState["chamberState"].to<JsonObject>();
+			JsonObject _chamberTemp = _chamberState["chamberTemp"].to<JsonObject>();
+				_chamberTemp["max"] = systemState.chamberState.maxChamberSensorTemp;
+				_chamberTemp["avg"] = systemState.chamberState.avgChamberSensorTemp;
+			JsonObject _chamberHum = _chamberState["chamberHum"].to<JsonObject>();
+				_chamberHum["max"] = systemState.chamberState.maxChamberSensorHum;
+				_chamberHum["avg"] = systemState.chamberState.avgChamberSensorHum;
+
+		JsonObject _ambientState = _systemState["ambientState"].to<JsonObject>();
+			_ambientState["temp"] = systemState.ambientState.ambientSensorTemp;
+			_ambientState["hum"] = systemState.ambientState.ambientSensorHum;
+
+		JsonObject _filamentState = _systemState["filamentState"].to<JsonObject>();
+			JsonObject _filamentTemp = _filamentState["filamentTemp"].to<JsonObject>();
+				_filamentTemp["max"] = systemState.filamentState.maxFilamentTemp;
+				_filamentTemp["avg"] = systemState.filamentState.avgFilamentTemp;	
+}
+
+void getSensorData(JsonObject &payload)
+{
+	JsonObject _rawSensorTelemetry = payload["rawSensorTelemetry"].to<JsonObject>();
+
+		JsonObject _chamber = _rawSensorTelemetry["chamber"].to<JsonObject>();
+			_chamber["sht31_0_temp"] = sensors.chamberSensorTemp_0;
+			_chamber["sht31_0_hum"] = sensors.chamberSensorHum_0;
+			_chamber["sht31_1_temp"] = sensors.chamberSensorTemp_1;
+			_chamber["sht31_1_hum"] = sensors.chamberSensorHum_1;
+			_chamber["sht31_2_temp"] = sensors.chamberSensorTemp_2;
+			_chamber["sht31_2_hum"] = sensors.chamberSensorHum_2;
+			_chamber["ds18b20_temp"] = sensors.heaterSensorTemp;
+
+		JsonObject _ambient = _rawSensorTelemetry["ambient"].to<JsonObject>();
+			_chamber["sht31_3_temp"] = sensors.ambientSensorTemp;
+			_chamber["sht31_3_hum"] = sensors.ambientSensorHum;
+
+		JsonObject _filament = _rawSensorTelemetry["filament"].to<JsonObject>();
+			_filament["mlx90614_0_temp"] = sensors.filamentSurfaceTemp_0;
+			_filament["mlx90614_1_temp"] = sensors.filamentSurfaceTemp_1;
+
+}
+
+void loadDataToSend(JsonObject &payload)
+{
+	/*
+		Load data into payload directly (any modifications made to the JSON object that references 
+		the doc are reflected into the original doc)
+	*/
+	getSysStateData(payload);
+	getSensorData(payload);
+}
+
+void handleReceivedCmds(JsonObject cmd)
+{
+	if (cmd["systemControl"].is<JsonObject>())
+	{
+		JsonObject systemControl = cmd["systemControl"].as<JsonObject>();
+
+		if (systemControl["systemStatus"].is<JsonString>())
+		{
+			const char* incomingSystemStatusStr = systemControl["systemStatus"];
+			SystemStatus incomingSystemStatus = sysStatusStrTosysStatus(incomingSystemStatusStr);
+
+			// Check for invalid input
+			if (incomingSystemStatus != SystemStatus::UNKNOWN)
+			{
+				systemState.systemStatus = incomingSystemStatus; // Change system status per cmd
+			}
+		}
+
+		if (systemControl["targetChamberTemp"].is<JsonFloat>())
+		{
+			float incomingTargetChamberTemp = systemControl["targetChamberTemp"];
+
+			// Check for invalid input
+			if (incomingTargetChamberTemp >= 0)
+			{
+				// Change chamber target temperature per cmd
+				systemState.systemConfig.targetChamberTemp = incomingTargetChamberTemp; 
+			}
+		}
+
+		if (systemControl["maxAllowedFilamentTemp"].is<JsonFloat>())
+		{
+			float incomingMaxAllowedFilamentTemp = systemControl["maxAllowedFilamentTemp"];
+
+			// Check for invalid input
+			if (incomingMaxAllowedFilamentTemp >= 0)
+			{
+				// Change max allowed chamber temperature per cmd
+				systemState.systemConfig.maxAllowedFilamentTemp = incomingMaxAllowedFilamentTemp; 
+			}
+		}
+
+		if (systemControl["targetRelHum"].is<JsonFloat>())
+		{
+			float incomingTargetRelHum = systemControl["targetRelHum"];
+
+			// Check for invalid input
+			if (incomingTargetRelHum >= 0)
+			{
+				// Change target relative humidity per cmd
+				systemState.systemConfig.targetRelHum = incomingTargetRelHum; 
+			}
+		}
+
+		if (systemControl["actuators"].is<JsonObject>())
+		{
+			JsonObject actuatorControl = systemControl["actuators"].as<JsonObject>();
+
+			if (actuatorControl["heaterSetpointTemp"].is<JsonFloat>())
+			{
+				float incomingHeaterSetpointTemp = actuatorControl["heaterSetpointTemp"];
+
+				// Check for invalid input
+				if (incomingHeaterSetpointTemp >= 0)
+				{
+					// Change mode as we are manipulating the actuators directly
+					systemState.systemStatus = SystemStatus::MANUAL_MODE ;
+
+					// Change heater temperature setpoint per cmd
+					heaterPidControl.setpoint = incomingHeaterSetpointTemp;
+				}
+			}
+
+			if (actuatorControl["fan"].is<JsonString>())
+			{
+				const char* incomingFanStatusStr = actuatorControl["fan"];
+				Actuators::FanStatus incomingFanStatus = Actuators::fanStatusStrToFanStatus(incomingFanStatusStr);
+
+				// Check for invalid input
+				if (incomingFanStatus != Actuators::FanStatus::UNKNOWN)
+				{
+					// Change mode as we are manipulating the actuators directly
+					systemState.systemStatus = SystemStatus::MANUAL_MODE ;
+
+					// Actuate fan based on cmd
+					if (incomingFanStatus == Actuators::FanStatus::ON)
+					{
+						Actuators::activateFan();
+					}
+					else
+					{
+						Actuators::deactivateFan();
+					}
+				}
+			}
+
+			if (actuatorControl["vents"].is<JsonString>())
+			{
+				const char* incomingVentsStatusStr = actuatorControl["vents"];
+				Actuators::VentsStatus incomingVentsStatus = Actuators::ventsStatusStrToVentsStatus(incomingVentsStatusStr);
+
+				// Check for invalid input
+				if (incomingVentsStatus != Actuators::VentsStatus::UNKNOWN)
+				{
+					// Change mode as we are manipulating the actuators directly
+					systemState.systemStatus = SystemStatus::MANUAL_MODE ;
+
+					// Actuate fan based on cmd
+					if (incomingVentsStatus == Actuators::VentsStatus::OPEN)
+					{
+						Actuators::openVents();
+					}
+					else
+					{
+						Actuators::closeVents();
+					}
+				}
+			}
+		}
+	}
+		
+	if (cmd["showcaseControl"].is<JsonObject>())
+	{
+		JsonObject showcaseControl = cmd["showcaseControl"].as<JsonObject>();
+
+		if (showcaseControl["showcaseMode"].is<bool>())
+		{
+			showcaseMode = showcaseControl["showcaseMode"];
+		}
+		
+
+		if (showcaseControl["simulatedSensors"].is<JsonObject>())
+		{
+			JsonObject simulatedSensors = showcaseControl["simulatedSensors"].as<JsonObject>();
+
+			// Change mode as we are feeding simulated sensor data for the SHOWCASE_MODE
+			showcaseMode = true;
+			systemState.systemStatus = SystemStatus::SHOWCASE_MODE ;
+
+			if (simulatedSensors["chamberSensorTemp_0"].is<JsonFloat>())
+				sensors.chamberSensorTemp_0 = simulatedSensors["chamberSensorTemp_0"];
+			if (simulatedSensors["chamberSensorTemp_1"].is<JsonFloat>())
+				sensors.chamberSensorTemp_1 = simulatedSensors["chamberSensorTemp_1"];
+			if (simulatedSensors["chamberSensorTemp_2"].is<JsonFloat>())
+				sensors.chamberSensorTemp_1 = simulatedSensors["chamberSensorTemp_1"];
+
+			if (simulatedSensors["chamberSensorHum_0"].is<JsonFloat>())
+				sensors.chamberSensorHum_0 = simulatedSensors["chamberSensorHum_0"];
+			if (simulatedSensors["chamberSensorHum_1"].is<JsonFloat>())
+				sensors.chamberSensorHum_1 = simulatedSensors["chamberSensorHum_1"];
+			if (simulatedSensors["chamberSensorHum_2"].is<JsonFloat>())
+				sensors.chamberSensorHum_2 = simulatedSensors["chamberSensorHum_2"];
+
+			if (simulatedSensors["ambientSensorTemp"].is<JsonFloat>())
+				sensors.ambientSensorTemp = simulatedSensors["ambientSensorTemp"];
+			if (simulatedSensors["ambientSensorHum"].is<JsonFloat>())
+				sensors.ambientSensorHum = simulatedSensors["ambientSensorHum"];
+
+			if (simulatedSensors["filamentSurfaceTemp_0"].is<JsonFloat>())
+				sensors.filamentSurfaceTemp_0 = simulatedSensors["filamentSurfaceTemp_0"];
+			if (simulatedSensors["filamentSurfaceTemp_1"].is<JsonFloat>())
+				sensors.filamentSurfaceTemp_1 = simulatedSensors["filamentSurfaceTemp_1"];
+
+			if (simulatedSensors["heaterSensorTemp"].is<JsonFloat>())
+				sensors.heaterSensorTemp = simulatedSensors["heaterSensorTemp"];
+			
+		}
+	}
+}
+
+void receiveFromCommsManager()
+{
+	static char rxJsonMsgBuffer[MAX_MSG_SIZE];
+
+	size_t receivedBytes = xMessageBufferReceive(
+		xCommsManagerToSysStateManagerMsgBuffer,	// Target message buffer handle
+		rxJsonMsgBuffer,							// Pointer to the buffer for the received message
+		sizeof(rxJsonMsgBuffer), 					// Length of the buffer for the received message
+		pdMS_TO_TICKS(0)							// Max time this task should be in the Blocked state
+													// waiting for a message, if there buffer is empty
+	);
+	
+	if (receivedBytes > 0)
+	{
+		// Parse and process the JSON
+		JsonDocument rx_doc;
+		
+		DeserializationError error = deserializeJson(rx_doc, rxJsonMsgBuffer, receivedBytes);
+		if (error)
+		{
+			Serial.printf("[Web] JSON parse error: %s \n", error.c_str());
+			return;
+		}
+		
+		// Print contents into serial
+		//JsonHandlers::printJsonContents(rx_doc);
+		
+		//manageProcesses(rx_doc);
+	}
+}
+
+void sendDataToCommsManager()
+{
+	/*
+		Any modifications made to the JSON object that references the doc
+		are reflected into the original doc
+	*/
+	JsonDocument tx_doc;
+	JsonObject tx_data = tx_doc.to<JsonObject>();
+	
+	// Load up the data
+	loadDataToSend(tx_data);
+	
+	sendToCommsManager(tx_doc);
+
+	// Print sent contents into serial
+	//JsonHandlers::printJsonContents(tx_doc);
+}
+
+bool sendToCommsManager(JsonDocument &doc)
+{
+	// Maybe (FUTURE) replace the buffer with thread-safe allocation?
+	static char txJsonMsgBuffer[MAX_MSG_SIZE];
+	const size_t len = measureJson(doc);
+	if (len == 0) 
+	{
+		Serial.println("[sysStateManager] Warning: Tried to send JSON message of size 0");
+		return false;
+	}
+	if (len > sizeof(txJsonMsgBuffer))
+	{
+		Serial.printf("[sysStateManager] Warning: JSON message %u bigger than message buffer %u, dropping JSON \n",
+			len, 
+			sizeof(txJsonMsgBuffer)
+		);
+		return false;
+	}
+
+	serializeJson(doc, txJsonMsgBuffer, len);
+
+	size_t sentBytes = xMessageBufferSend(
+		xSysStateManagerToCommsManagerMsgBuffer,	// Target message buffer handle
+		txJsonMsgBuffer,							// Pointer to data being sent
+		len, 										// Length of the message
+		pdMS_TO_TICKS(0)							// Max time this task should be the in Blocked state
+													// for enough space in the buffer, if there's 
+													// insufficient space when the call is made
+	);
+
+	if (sentBytes != len) {
+		Serial.println("[sysStateManager] Warning: Message buffer to commsManager full, message dropped");
+		return false;
+	}
+
+	Serial.printf("[sysStateManager] Sent JSON message of size: %u \n", sentBytes);
+	return true;
+}
+
 SystemStatus sysStatusStrTosysStatus(const char* str)
 {
 	if (strcmp(str, "IDLE") == 0)
@@ -283,8 +786,8 @@ SystemStatus sysStatusStrTosysStatus(const char* str)
 		return SystemStatus::VENTING ;
 	if (strcmp(str, "EMERGENCY_VENTING") == 0)
 		return SystemStatus::EMERGENCY_VENTING ;
-	if (strcmp(str, "TESTING_MODE") == 0)
-		return SystemStatus::TESTING_MODE ;
+	if (strcmp(str, "MANUAL_MODE") == 0)
+		return SystemStatus::MANUAL_MODE ;
 	if (strcmp(str, "SHOWCASE_MODE") == 0)
 		return SystemStatus::SHOWCASE_MODE ;
 	return SystemStatus::UNKNOWN ; // Default return value if no match is found
@@ -299,7 +802,7 @@ const char* sysStatusToSysStatusStr(SystemStatus status)
 		case SystemStatus::DRYING : return "DRYING";
 		case SystemStatus::VENTING : return "VENTING";
 		case SystemStatus::EMERGENCY_VENTING : return "EMERGENCY_VENTING";
-		case SystemStatus::TESTING_MODE : return "TESTING_MODE";
+		case SystemStatus::MANUAL_MODE : return "MANUAL_MODE";
 		case SystemStatus::SHOWCASE_MODE : return "SHOWCASE_MODE";
         default: return "UNKNOWN";
 	}
