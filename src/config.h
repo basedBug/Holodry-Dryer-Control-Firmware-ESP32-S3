@@ -2,8 +2,13 @@
 
 #include <Arduino.h>
 
-#define SERVO_0_PIN GPIO_NUM_45
-#define SERVO_1_PIN GPIO_NUM_46
+/*
+    ESP32-S3 has recommended servo pins GPIO 1-21,35-45,47-48
+    According to the code at: 
+        https://github.com/madhephaestus/ESP32Servo/blob/master/examples/Multiple-Servo-Example-Arduino/Multiple-Servo-Example-Arduino.ino
+*/
+#define SERVO_0_PIN GPIO_NUM_17
+#define SERVO_1_PIN GPIO_NUM_18
 
 #define DS18B20_PIN GPIO_NUM_36
 #define FAN_PIN GPIO_NUM_37
