@@ -66,40 +66,40 @@ void Actuators::closeVents()
     systemState.actuatorsStatus.ventsStatus = VentsStatus::CLOSED;
 }
 
-uint8_t Actuators::fanStatusStrToBitmask(const char* keyValue)
+Actuators::FanStatus Actuators::fanStatusStrToFanStatus(const char* str)
 {
-	if (strcmp(keyValue, "OFF") == 0)
-		return static_cast<uint8_t>(FanStatus::OFF);
-	if (strcmp(keyValue, "ON") == 0)
-		return static_cast<uint8_t>(FanStatus::ON);
-    return static_cast<uint8_t>(FanStatus::UNKNOWN); // Default return value if no match is found
+	if (strcmp(str, "OFF") == 0)
+		return FanStatus::OFF ;
+	if (strcmp(str, "ON") == 0)
+		return FanStatus::ON ;
+    return FanStatus::UNKNOWN ; // Default return value if no match is found
 }
 
-const char* Actuators::fanStatusBitmaskToStr(uint8_t bitmask)
+const char* Actuators::fanStatusToFanStatusStr(FanStatus status)
 {
-	switch (bitmask)
+	switch (status)
 	{
-		case static_cast<uint8_t>(FanStatus::OFF): return "OFF";
-		case static_cast<uint8_t>(FanStatus::ON): return "ON";
+		case FanStatus::OFF : return "OFF";
+		case FanStatus::ON : return "ON";
         default: return "UNKNOWN";
 	}
 }
 
-uint8_t Actuators::ventsStatusStrToBitmask(const char* keyValue)
+Actuators::VentsStatus Actuators::ventsStatusStrToVentsStatus(const char* str)
 {
-	if (strcmp(keyValue, "CLOSED") == 0)
-		return static_cast<uint8_t>(VentsStatus::CLOSED);
-	if (strcmp(keyValue, "OPEN") == 0)
-		return static_cast<uint8_t>(VentsStatus::OPEN);
-    return static_cast<uint8_t>(VentsStatus::UNKNOWN); // Default return value if no match is found
+	if (strcmp(str, "CLOSED") == 0)
+		return VentsStatus::CLOSED ;
+	if (strcmp(str, "OPEN") == 0)
+		return VentsStatus::OPEN ;
+    return VentsStatus::UNKNOWN ; // Default return value if no match is found
 }
 
-const char* Actuators::ventsStatusBitmaskToStr(uint8_t bitmask)
+const char* Actuators::ventsStatusToVentsStatusStr(VentsStatus status)
 {
-	switch (bitmask)
+	switch (status)
 	{
-		case static_cast<uint8_t>(VentsStatus::CLOSED): return "CLOSED";
-		case static_cast<uint8_t>(VentsStatus::OPEN): return "OPEN";
+		case VentsStatus::CLOSED : return "CLOSED";
+		case VentsStatus::OPEN : return "OPEN";
         default: return "UNKNOWN";
 	}
 }

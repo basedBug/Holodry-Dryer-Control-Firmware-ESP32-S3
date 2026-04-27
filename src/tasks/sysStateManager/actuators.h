@@ -33,8 +33,8 @@ namespace Actuators
     void openVents();
     void closeVents();
 
-    uint8_t fanStatusStrToBitmask(const char* keyValue);
-    const char* fanStatusBitmaskToStr(uint8_t bitmask);
-    uint8_t ventsStatusStrToBitmask(const char* keyValue);
-    const char* ventsStatusBitmaskToStr(uint8_t bitmask);
+    FanStatus fanStatusStrToFanStatus(const char* str);
+    const char* fanStatusToFanStatusStr(FanStatus status);
+    VentsStatus ventsStatusStrToVentsStatus(const char* str);
+    const char* ventsStatusToVentsStatusStr(VentsStatus status);
 };
