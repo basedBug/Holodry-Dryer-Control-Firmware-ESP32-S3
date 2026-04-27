@@ -42,8 +42,9 @@ struct SystemSensors
 };
 
 void sensorManagerTask(void *pvParameters);
+
 bool initSensorManager();
 void readSensors();
 void readMuxSensors();
 
-const char* muxChannelName(uint8_t channel);
+const char* muxChannelName(MuxSensorChannel channel);
