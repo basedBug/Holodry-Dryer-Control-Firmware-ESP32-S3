@@ -253,5 +253,36 @@ void manageSystem()
 
 void sendToCommsManager()
 {
+SystemStatus sysStatusStrTosysStatus(const char* str)
+{
+	if (strcmp(str, "IDLE") == 0)
+		return SystemStatus::IDLE ;
+	if (strcmp(str, "TUNING") == 0)
+		return SystemStatus::TUNING ;
+	if (strcmp(str, "DRYING") == 0)
+		return SystemStatus::DRYING ;
+	if (strcmp(str, "VENTING") == 0)
+		return SystemStatus::VENTING ;
+	if (strcmp(str, "EMERGENCY_VENTING") == 0)
+		return SystemStatus::EMERGENCY_VENTING ;
+	if (strcmp(str, "TESTING_MODE") == 0)
+		return SystemStatus::TESTING_MODE ;
+	if (strcmp(str, "SHOWCASE_MODE") == 0)
+		return SystemStatus::SHOWCASE_MODE ;
+	return SystemStatus::UNKNOWN ; // Default return value if no match is found
+}
 
+const char* sysStatusToSysStatusStr(SystemStatus status)
+{
+	switch (status)
+	{
+		case SystemStatus::IDLE : return "IDLE";
+		case SystemStatus::TUNING : return "TUNING";
+		case SystemStatus::DRYING : return "DRYING";
+		case SystemStatus::VENTING : return "VENTING";
+		case SystemStatus::EMERGENCY_VENTING : return "EMERGENCY_VENTING";
+		case SystemStatus::TESTING_MODE : return "TESTING_MODE";
+		case SystemStatus::SHOWCASE_MODE : return "SHOWCASE_MODE";
+        default: return "UNKNOWN";
+	}
 }

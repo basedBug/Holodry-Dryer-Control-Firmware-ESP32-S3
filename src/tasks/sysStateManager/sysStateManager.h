@@ -2,30 +2,20 @@
 
 #include "../src/globals/globals.h"
 #include "../sensorManager/sensorManager.h"
-#include "../actuatorManager/actuatorManager.h"
+#include "actuators.h"
 #include "thermodynamics.h"
 #include "ArduinoJson.h"
 
 enum class SystemStatus : uint8_t
 {
     IDLE,
+    TUNING,
     DRYING,
     VENTING,
     EMERGENCY_VENTING,
     TESTING_MODE,
-    SHOWCASE_MODE
-};
-
-enum class HeaterStatus : uint8_t
-{
-    IDLE,
-    ACTIVE
-};
-
-enum class FanStatus : uint8_t
-{
-    IDLE,
-    ACTIVE
+    SHOWCASE_MODE,
+    UNKNOWN
 };
 
 struct ChamberState
@@ -58,14 +48,15 @@ struct SystemConfig
 
 struct SystemState
 {
+    SystemStatus systemStatus;
+    SystemConfig systemConfig;
+
     ChamberState chamberState;
     AmbientState ambientState;
     FilamentState filamentState;
 
-    SystemConfig systemConfig;
-    SystemStatus systemStatus;
-    
-    float heaterTemp;
+    Actuators::ActuatorsStatus actuatorsStatus;
+
     float exteriorAbsHum;
     float interiorAbsHum;
 };
@@ -89,10 +80,13 @@ struct Sensors
     float heaterSensorTemp;
 };
 
+extern SystemState systemState;
+
 void sysStateManagerTask(void *pvParameters);
 void receiveFromSensorManager();
 void computeSysVariables();
 void receiveFromCommsManager();
 
 void manageSystem();
-void sendToCommsManager();
+SystemStatus sysStatusStrTosysStatus(const char* str);
+const char* sysStatusToSysStatusStr(SystemStatus status);
