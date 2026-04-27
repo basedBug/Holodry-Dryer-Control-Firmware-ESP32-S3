@@ -3,7 +3,7 @@
 #include "../src/globals/globals.h"
 #include "../sensorManager/sensorManager.h"
 #include "../actuatorManager/actuatorManager.h"
-#include "humidity.h"
+#include "thermodynamics.h"
 #include "ArduinoJson.h"
 
 enum class SystemStatus : uint8_t
