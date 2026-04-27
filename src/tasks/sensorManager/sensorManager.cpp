@@ -24,7 +24,6 @@ void sensorManagerTask()
         // Try to reinitialize
         Serial.println("[sensorManager] Error: Comms initialization failed");
         Serial.println("[sensorManager] Trying reinitialization");
-        initSensorManager();
     }
 
     TickType_t xLastWakeTime;
