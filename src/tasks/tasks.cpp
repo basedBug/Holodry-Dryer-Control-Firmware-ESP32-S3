@@ -48,15 +48,13 @@ void createTasks()
 		1							// Core to run on
 	);
 
-	/*
 	xTaskCreatePinnedToCore(
 		sysMonitorTask,			// Task function to be called
 		"sysMonitor",			// Task name (for debug)
 		7000,					// Stack size (bytes)
 		NULL,					// Task parameters
 		2,						// Priority
-		&sysMonitorTaskHandle,	// Task handle
+		&xSysMonitorTaskHandle,	// Task handle
 		1						// Core to run on
 	);
-	*/
 }

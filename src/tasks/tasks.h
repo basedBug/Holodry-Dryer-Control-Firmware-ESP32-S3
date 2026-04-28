@@ -7,6 +7,7 @@
 #include "pidManager/pidManager.h"
 #include "sysStateManager/sysStateManager.h"
 #include "commsManager/commsManager.h"
+#include "sysMonitor/sysMonitor.h"
 
 // Sensor handler
 // Thermodynamics/System state control (actuators act in here?)
