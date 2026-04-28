@@ -12,7 +12,7 @@
 void setup()
 {
 	// Initialize the serial port for debugging
-	Serial.begin(SERIAL_BAUD_RATE);
+	Serial.begin(DEBUG_SERIAL_BAUD_RATE);
 
 	vTaskDelay(pdMS_TO_TICKS(2000)); // A little delay to permit me to connect the damn serial to my logger
 	

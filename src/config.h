@@ -14,13 +14,16 @@
 #define FAN_PIN GPIO_NUM_37
 #define HEATER_PIN GPIO_NUM_38
 
-#define I2C_MASTER_SDA_PIN GPIO_NUM_1
-#define I2C_MASTER_SCL_PIN GPIO_NUM_2
-
 #define I2C_MUX_SDA_PIN GPIO_NUM_4
 #define I2C_MUX_SCL_PIN GPIO_NUM_5
 
-#define SERIAL_BAUD_RATE 921600
+#define EXTERNAL_COMMS_UART_1_SERIAL_RX_PIN GPIO_NUM_11
+#define EXTERNAL_COMMS_UART_1_SERIAL_TX_PIN GPIO_NUM_12
+
+#define DEBUG_SERIAL_BAUD_RATE 921600 // Needs to be as fast as possible to reduce delays when printing
+#define EXTERNAL_COMMS_SERIAL_BAUD_RATE 921600 // Maybe make it slower to try and reduce erros in the 
+                                               // comms?
+
 #define VENT_SERVO_OPEN_POSITION 180 // (deg)
 #define VENT_SERVO_CLOSED_POSITION 0 // (deg)
 #define VENTILATION_TIME_INTERVAL 10000 // ms

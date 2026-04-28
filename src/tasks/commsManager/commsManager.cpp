@@ -28,10 +28,10 @@ void initCommsManager()
     Serial.println("[commsManager] Initializing Serial comms to master controller");
     
     CommsSerial.begin(
-        SERIAL_BAUD_RATE,               // Baudrate
-        SERIAL_8N1,                     // UART config, SERIAL_8N1 is the default config
-        MASTER_UART_1_SERIAL_RX_PIN,    // RX pin
-        MASTER_UART_1_SERIAL_TX_PIN     // TX pin
+        EXTERNAL_COMMS_SERIAL_BAUD_RATE,        // Baudrate
+        SERIAL_8N1,                             // UART config, SERIAL_8N1 is the default config
+        EXTERNAL_COMMS_UART_1_SERIAL_RX_PIN,    // RX pin
+        EXTERNAL_COMMS_UART_1_SERIAL_TX_PIN     // TX pin
     );
 
     Serial.println("[commsManager] Serial comms to master controller initialized");
