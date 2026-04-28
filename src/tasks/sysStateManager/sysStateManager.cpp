@@ -516,11 +516,11 @@ void loadDataToSend(JsonObject &payload)
 	getSensorData(payload);
 }
 
-void handleReceivedCmds(JsonObject cmd)
+void handleReceivedCmds(JsonDocument& cmdDoc)
 {
-	if (cmd["systemControl"].is<JsonObject>())
+	if (cmdDoc["systemControl"].is<JsonObject>())
 	{
-		JsonObject systemControl = cmd["systemControl"].as<JsonObject>();
+		JsonObject systemControl = cmdDoc["systemControl"].as<JsonObject>();
 
 		if (systemControl["systemStatus"].is<JsonString>())
 		{
@@ -713,7 +713,8 @@ void receiveFromCommsManager()
 		// Print contents into serial
 		//JsonHandlers::printJsonContents(rx_doc);
 		
-		//manageProcesses(rx_doc);
+		// Handle incoming JSON data
+		handleReceivedCmds(rx_doc);
 	}
 }
 

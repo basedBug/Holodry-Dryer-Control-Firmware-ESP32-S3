@@ -108,7 +108,7 @@ void getSensorData(JsonObject &payload);
 void loadDataToSend(JsonObject &payload);
 bool sendToCommsManager(JsonDocument &doc);
 void sendDataToCommsManager();
-void handleReceivedCmds(JsonObject cmd);
+void handleReceivedCmds(JsonDocument& cmdDoc);
 
 SystemStatus sysStatusStrTosysStatus(const char* str);
 const char* sysStatusToSysStatusStr(SystemStatus status);
