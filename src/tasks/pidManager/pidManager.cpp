@@ -30,8 +30,8 @@ void pidManagerTask(void *pvParameters)
 	*/
 	while (true)
 	{
-        receiveFromTaskManager();
-        sendToTaskManager();
+        receiveFromSysStateManager();
+        sendToSysStateManager();
 
 		if (xTaskGetTickCount() - xLastWakeTime >= xTimeInterval)
 		{	
@@ -89,7 +89,7 @@ void initPidManager()
     Serial.println("[pidManager] PID controller initialized");
 }
 
-void receiveFromTaskManager()
+void receiveFromSysStateManager()
 {
     HeaterPidControl receivedPidControlData;
 
@@ -108,7 +108,7 @@ void receiveFromTaskManager()
     }
 }
 
-void sendToTaskManager()
+void sendToSysStateManager()
 {
     // Send data to PID control queue
     xQueueOverwrite(xPidManagerToSysStateManagerQueue, &pidData); // Overwrites if full

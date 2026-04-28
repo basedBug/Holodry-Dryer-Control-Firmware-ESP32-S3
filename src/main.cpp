@@ -25,25 +25,25 @@ void setup()
 	xSysStateManagerToPidManagerQueue = xQueueCreate(PID_CONTROL_QUEUE_SIZE, sizeof(HeaterPidControl));
 	if (!xSysStateManagerToPidManagerQueue)
 	{
-		Serial.println("[RTOS] Failed to create PidControl queue");
+		Serial.println("[RTOS] Failed to create SystemStateManager to PidManager queue");
 	}
 
 	xPidManagerToSysStateManagerQueue = xQueueCreate(PID_CONTROL_QUEUE_SIZE, sizeof(HeaterPidControl));
 	if (!xPidManagerToSysStateManagerQueue)
 	{
-		Serial.println("[RTOS] Failed to create PidControl queue");
+		Serial.println("[RTOS] Failed to create PidManager to SystemStateManager queue");
 	}
 
-	xSensorManagerToCommsManager = xMessageBufferCreate(MSG_BUFFER_SIZE);
-	if (!xSensorManagerToCommsManager)
+	xSysStateManagerToCommsManagerMsgBuffer = xMessageBufferCreate(MSG_BUFFER_SIZE);
+	if (!xSysStateManagerToCommsManagerMsgBuffer)
 	{
-		Serial.println("[RTOS] Failed to create SensorManager to CommsManager message buffer");
+		Serial.println("[RTOS] Failed to create SysStateManager to CommsManager message buffer");
 	}
 
-	xCommsManagerToSensorManager = xMessageBufferCreate(MSG_BUFFER_SIZE);
-	if (!xCommsManagerToSensorManager)
+	xCommsManagerToSysStateManagerMsgBuffer = xMessageBufferCreate(MSG_BUFFER_SIZE);
+	if (!xCommsManagerToSysStateManagerMsgBuffer)
 	{
-		Serial.println("[RTOS] Failed to create CommsManager to SensorManager message buffer");
+		Serial.println("[RTOS] Failed to create CommsManager to SysStateManager message buffer");
 	}
 	
 	// Create tasks, they start by themselves
