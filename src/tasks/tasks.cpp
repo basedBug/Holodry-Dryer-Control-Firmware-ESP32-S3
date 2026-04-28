@@ -21,31 +21,11 @@ void createTasks()
 	xTaskCreatePinnedToCore(
 		pidManagerTask,			// Task function to be called
 		"pidManager",			// Task name (for debug)
-		10000,					// Stack size (bytes)
+		8000,					// Stack size (bytes)
 		NULL,					// Task parameters
-		4,						// Priority
+		2,						// Priority
 		&xPidManagerTaskHandle,	// Task handle
-		1						// Core to run on
-	);
-
-	xTaskCreatePinnedToCore(
-		sysStateManagerTask,			// Task function to be called
-		"sysStateManager",				// Task name (for debug)
-		8000,							// Stack size (bytes)
-		NULL,							// Task parameters
-		3,								// Priority
-		&xSysStateManagerTaskHandle,	// Task handle
-		1								// Core to run on
-	);
-
-	xTaskCreatePinnedToCore(
-		commsManagerTask,			// Task function to be called
-		"commsManager",				// Task name (for debug)
-		8000,						// Stack size (bytes)
-		NULL,						// Task parameters
-		3,							// Priority
-		&xCommsManagerTaskHandle,	// Task handle
-		1							// Core to run on
+		0						// Core to run on
 	);
 
 	xTaskCreatePinnedToCore(
@@ -53,8 +33,28 @@ void createTasks()
 		"sysMonitor",			// Task name (for debug)
 		7000,					// Stack size (bytes)
 		NULL,					// Task parameters
-		2,						// Priority
+		1,						// Priority
 		&xSysMonitorTaskHandle,	// Task handle
-		1						// Core to run on
+		0						// Core to run on
+	);
+
+	xTaskCreatePinnedToCore(
+		sysStateManagerTask,			// Task function to be called
+		"sysStateManager",				// Task name (for debug)
+		20000,							// Stack size (bytes)
+		NULL,							// Task parameters
+		2,								// Priority
+		&xSysStateManagerTaskHandle,	// Task handle
+		1								// Core to run on
+	);
+
+	xTaskCreatePinnedToCore(
+		commsManagerTask,			// Task function to be called
+		"commsManager",				// Task name (for debug)
+		10000,						// Stack size (bytes)
+		NULL,						// Task parameters
+		2,							// Priority
+		&xCommsManagerTaskHandle,	// Task handle
+		1							// Core to run on
 	);
 }
