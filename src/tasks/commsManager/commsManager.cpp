@@ -37,7 +37,7 @@ void initCommsManager()
     Serial.println("[commsManager] Serial comms to master controller initialized");
 }
 
-void receiveFromSerialComms(JsonDocument &doc)
+void receiveFromSerialComms()
 {
     // Check if theres data available to be read
     if (CommsSerial.available())

@@ -6,8 +6,8 @@
 
 void commsManagerTask(void *pvParameters);
 
-void initCommsManager();
-void receiveFromSysStateManager();
-bool sendToSysStateManager(JsonDocument &doc);
-void receiveFromSerialComms();
-void sendToSerialComms(JsonDocument &doc);
+static void initCommsManager();
+static void receiveFromSysStateManager();
+static bool sendToSysStateManager(JsonDocument &doc);
+static void receiveFromSerialComms();
+static void sendToSerialComms(JsonDocument &doc);

@@ -7,6 +7,6 @@
 
 void pidManagerTask(void *pvParameters);
 
-void initPidManager();
-void receiveFromSysStateManager();
-void sendToSysStateManager();
+static void initPidManager();
+static void receiveFromSysStateManager();
+static void sendToSysStateManager();

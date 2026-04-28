@@ -93,22 +93,23 @@ extern SystemState systemState;
 extern HeaterPidControl heaterPidControl;
 
 void sysStateManagerTask(void *pvParameters);
-void receiveFromSensorManager();
-void receiveFromPidManager();
-void sendToPidManager();
-void computeSysVariables();
-void receiveFromCommsManager();
 
-void manageSystem();
-void registerSysStatusChange(SystemStatus status);
+static void receiveFromSensorManager();
+static void receiveFromPidManager();
+static void sendToPidManager();
+static void computeSysVariables();
+static void receiveFromCommsManager();
 
-void getSysStateData(JsonObject &payload);
-void getSensorData(JsonObject &payload);
+static void manageSystem();
+static void registerSysStatusChange(SystemStatus status);
 
-void loadDataToSend(JsonObject &payload);
-bool sendToCommsManager(JsonDocument &doc);
-void sendDataToCommsManager();
-void handleReceivedCmds(JsonDocument& cmdDoc);
+static void getSysStateData(JsonObject &payload);
+static void getSensorData(JsonObject &payload);
 
-SystemStatus sysStatusStrTosysStatus(const char* str);
-const char* sysStatusToSysStatusStr(SystemStatus status);
+static void loadDataToSend(JsonObject &payload);
+static bool sendToCommsManager(JsonDocument &doc);
+static void sendDataToCommsManager();
+static void handleReceivedCmds(JsonDocument& cmdDoc);
+
+static SystemStatus sysStatusStrTosysStatus(const char* str);
+static const char* sysStatusToSysStatusStr(SystemStatus status);

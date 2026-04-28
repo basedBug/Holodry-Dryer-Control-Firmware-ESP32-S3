@@ -15,7 +15,7 @@ DallasTemperature ds18b20(&oneWire);
 
 SystemSensors systemSensors;
 
-void sensorManagerTask()
+void sensorManagerTask(void *pvParameters)
 {
     Serial.println("[sensorManager] Task started");
 
