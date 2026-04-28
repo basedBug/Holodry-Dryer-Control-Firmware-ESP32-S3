@@ -104,6 +104,7 @@ bool initSensorManager()
     ds18b20.begin(); // Doesnt have failure detection
     Serial.println("[sensorManager] DS18B20 sensor initialized");
 
+    Serial.println("[sensorManager] Sensors initialized");
     return true;
 }
 
