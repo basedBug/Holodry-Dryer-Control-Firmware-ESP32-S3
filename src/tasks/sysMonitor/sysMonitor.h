@@ -8,6 +8,6 @@
 
 void sysMonitorTask(void *pvParameters);
 
-void printTasksStats();
+static void printTasksStats();
 
-const char* taskStatusToStr(eTaskState state);
+static const char* taskStatusToStr(eTaskState state);

@@ -1,4 +1,5 @@
 #include "actuators.h"
+#include "sysStateManager.h"
 
 Servo ventServo_0, ventServo_1;
 
