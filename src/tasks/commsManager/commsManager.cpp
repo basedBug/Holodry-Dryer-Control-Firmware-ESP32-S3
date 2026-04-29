@@ -1,7 +1,14 @@
 #include "commsManager.h"
 
-// Repourpose the Serial1 port
-HardwareSerial CommsSerial(Serial1);
+/*
+	If it's wanted to use the other USB port onboard (the one that isnt used by default for uploading 
+	the code or debugging), use Serial0, or just grab its pins. Otherwise just use any other pins or 
+	UARTS.
+
+	The second USB port onboard named "COM" (besides the "USB" one) is connected to UART0, in other
+	words, Serial0, which has pins RX->GPIO_44, TX->GPIO_43.
+*/
+HardwareSerial CommsSerial(Serial0); // Repurpose UART0 for external serial comms
 
 void commsManagerTask(void *pvParameters)
 {
@@ -27,12 +34,17 @@ void initCommsManager()
 {
     Serial.println("[commsManager] Initializing Serial comms to master controller");
     
+	// If we are using Serial0, we just need to set the baudrate, as Serial0 cannot be reassigned to
+	// other pins
+	CommsSerial.begin(EXTERNAL_COMMS_SERIAL_BAUD_RATE);
+	/*
     CommsSerial.begin(
         EXTERNAL_COMMS_SERIAL_BAUD_RATE,        // Baudrate
         SERIAL_8N1,                             // UART config, SERIAL_8N1 is the default config
-        EXTERNAL_COMMS_UART_1_SERIAL_RX_PIN,    // RX pin
-        EXTERNAL_COMMS_UART_1_SERIAL_TX_PIN     // TX pin
+        EXTERNAL_COMMS_UART_SERIAL_RX_PIN,    // RX pin
+        EXTERNAL_COMMS_UART_SERIAL_TX_PIN     // TX pin
     );
+	*/
 
     Serial.println("[commsManager] Serial comms to master controller initialized");
 }

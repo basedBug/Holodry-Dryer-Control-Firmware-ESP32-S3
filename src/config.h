@@ -17,8 +17,16 @@
 #define I2C_MUX_SDA_PIN GPIO_NUM_4
 #define I2C_MUX_SCL_PIN GPIO_NUM_5
 
-#define EXTERNAL_COMMS_UART_1_SERIAL_RX_PIN GPIO_NUM_11
-#define EXTERNAL_COMMS_UART_1_SERIAL_TX_PIN GPIO_NUM_12
+/*
+    It's convenient to use the UART0 (Serial0) port as it's the one that's connected to the other USB 
+    connector onboard (the one with "COM"), so the physical connection is just a normal USB C cable 
+    instead of dealing with bare pins trying to make another connector
+
+    If we are using Serial0, we just need to set the baudrate, as Serial0 cannot be reassigned to
+	other pins
+*/
+#define EXTERNAL_COMMS_UART_SERIAL_RX_PIN GPIO_NUM_44
+#define EXTERNAL_COMMS_UART_SERIAL_TX_PIN GPIO_NUM_43
 
 #define DEBUG_SERIAL_BAUD_RATE 921600 // Needs to be as fast as possible to reduce delays when printing
 #define EXTERNAL_COMMS_SERIAL_BAUD_RATE 921600 // Maybe make it slower to try and reduce erros in the 
