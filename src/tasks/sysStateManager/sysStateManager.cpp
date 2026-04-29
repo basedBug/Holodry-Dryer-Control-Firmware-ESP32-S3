@@ -637,9 +637,9 @@ void handleReceivedCmds(JsonDocument& cmdDoc)
 		}
 	}
 		
-	if (cmd["showcaseControl"].is<JsonObject>())
+	if (cmdDoc["showcaseControl"].is<JsonObject>())
 	{
-		JsonObject showcaseControl = cmd["showcaseControl"].as<JsonObject>();
+		JsonObject showcaseControl = cmdDoc["showcaseControl"].as<JsonObject>();
 
 		if (showcaseControl["showcaseMode"].is<bool>())
 		{
