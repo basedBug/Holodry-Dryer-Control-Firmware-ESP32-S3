@@ -17,8 +17,8 @@
 #define I2C_MUX_SDA_PIN GPIO_NUM_4
 #define I2C_MUX_SCL_PIN GPIO_NUM_5
 
-#define EXTERNAL_COMMS_UART_1_SERIAL_RX_PIN GPIO_NUM_11
-#define EXTERNAL_COMMS_UART_1_SERIAL_TX_PIN GPIO_NUM_12
+#define EXTERNAL_COMMS_UART_SERIAL_RX_PIN GPIO_NUM_44
+#define EXTERNAL_COMMS_UART_SERIAL_TX_PIN GPIO_NUM_43
 
 #define DEBUG_SERIAL_BAUD_RATE 921600 // Needs to be as fast as possible to reduce delays when printing
 #define EXTERNAL_COMMS_SERIAL_BAUD_RATE 921600 // Maybe make it slower to try and reduce erros in the 
