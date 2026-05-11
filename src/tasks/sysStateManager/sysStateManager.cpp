@@ -224,6 +224,9 @@ void manageSystem()
 				// Reset the flag to be able to call tuning mode again
 				heaterPidControl.tuneCompleted = false;
 
+				/*
+					If the SHOWCASE_MODE was the last mode, switch back to it after drying
+				*/
 				if (showcaseMode)
 				{
 					// If tuning is done, go back SHOWCASE_MODE
@@ -277,7 +280,7 @@ void manageSystem()
 				// Stop drying
 
 				/*
-					If the SHOWCASE_MODE was the last one, switch back to it after drying
+					If the SHOWCASE_MODE was the last mode, switch back to it after drying
 				*/
 				if (showcaseMode)
 				{
@@ -346,14 +349,6 @@ void manageSystem()
 				// Heater must not be reactivated from here, it will be handled by the other modes
 				// Close cooling vent
 				Actuators::closeVents();
-				
-
-				if (showcaseMode)
-				{
-					// If tuning is done, go back SHOWCASE_MODE
-					systemState.systemStatus = SystemStatus::SHOWCASE_MODE ;
-					break;
-				}
 
 				// Change mode back to drying
 				systemState.systemStatus = SystemStatus::DRYING ;
@@ -387,14 +382,19 @@ void manageSystem()
 				Handle only simulated sensor readings to showcase usage quickly
 
 				Does the same thing as IDLE
-			*/
 
-			/*
 				The reception of real sensor readings is deactivated
 
 				The simulated ones for the SHOWCASE_MODE are sent by the master controller (Rasperry Pi 4) through json
 				an are handled directly at json reception
 			*/
+
+			// Return to idle if showcase mode is deactivated
+			if(!showcaseMode)
+			{
+				systemState.systemStatus = SystemStatus::IDLE ;
+				break;
+			}
 
 			// Set actuators to secure states
 			heaterPidControl.setpoint = 0; // Turn off the heater
@@ -497,8 +497,8 @@ void getSensorData(JsonObject &payload)
 			_chamber["ds18b20_temp"] = sensors.heaterSensorTemp;
 
 		JsonObject _ambient = _rawSensorTelemetry["ambient"].to<JsonObject>();
-			_chamber["sht31_3_temp"] = sensors.ambientSensorTemp;
-			_chamber["sht31_3_hum"] = sensors.ambientSensorHum;
+			_ambient["sht31_3_temp"] = sensors.ambientSensorTemp;
+			_ambient["sht31_3_hum"] = sensors.ambientSensorHum;
 
 		JsonObject _filament = _rawSensorTelemetry["filament"].to<JsonObject>();
 			_filament["mlx90614_0_temp"] = sensors.filamentSurfaceTemp_0;
