@@ -6,31 +6,31 @@ void sysMonitorTask(void *pvParameters)
     Serial.println("[sysMonitor] Initiating monitoring");
 
     TickType_t xLastPrintTime;
-    const TickType_t xTimeInterval = pdMS_TO_TICKS(10000); // 1s
+    const TickType_t xTimeInterval = pdMS_TO_TICKS(10000); // 10s
 
     // Initialise the xLastWakeTime variable with the current time.
     xLastPrintTime = xTaskGetTickCount();
 
     while (true)
     {
-        // Wait for the next cycle
-        vTaskDelayUntil(&xLastPrintTime, xTimeInterval);
-    
         Serial.println("\n[sysMonitor] === SYSTEM STATUS ===");
-
+        
         // Get the total free size of all the heap memory regions
         Serial.printf("[sysMonitor] Free heap: %u bytes\n", ESP.getFreeHeap());              //
-
+        
         /* 
             This adds all the low watermarks of the heap regions. This result gives a "worst case"
             indication for all-time minimum free heap.
         */
-        Serial.printf("[sysMonitor] Min free heap: %u bytes\n", ESP.getMinFreeHeap());       //
+       Serial.printf("[sysMonitor] Min free heap: %u bytes\n", ESP.getMinFreeHeap());       //
+       
+       // Get the largest free block of heap memory able to be allocated.
+       Serial.printf("[sysMonitor] Max alloc heap: %u bytes\n", ESP.getMaxAllocHeap());
+       
+       printTasksStats();
 
-        // Get the largest free block of heap memory able to be allocated.
-        Serial.printf("[sysMonitor] Max alloc heap: %u bytes\n", ESP.getMaxAllocHeap());
-
-        printTasksStats();
+       // Wait for the next cycle
+       vTaskDelayUntil(&xLastPrintTime, xTimeInterval);
     }
 }
 
