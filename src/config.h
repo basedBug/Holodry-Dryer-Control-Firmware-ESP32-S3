@@ -7,15 +7,15 @@
     According to the code at: 
         https://github.com/madhephaestus/ESP32Servo/blob/master/examples/Multiple-Servo-Example-Arduino/Multiple-Servo-Example-Arduino.ino
 */
-#define SERVO_0_PIN GPIO_NUM_17
-#define SERVO_1_PIN GPIO_NUM_18
+#define SERVO_0_PIN GPIO_NUM_6
+#define SERVO_1_PIN GPIO_NUM_7
 
-#define DS18B20_PIN GPIO_NUM_36
-#define FAN_PIN GPIO_NUM_37
-#define HEATER_PIN GPIO_NUM_38
+#define DS18B20_PIN GPIO_NUM_21
+#define FAN_PIN GPIO_NUM_4
+#define HEATER_PIN GPIO_NUM_5
 
-#define I2C_MUX_SDA_PIN GPIO_NUM_4
-#define I2C_MUX_SCL_PIN GPIO_NUM_5
+#define I2C_MUX_SDA_PIN GPIO_NUM_1
+#define I2C_MUX_SCL_PIN GPIO_NUM_2
 
 /*
     It's convenient to use the UART0 (Serial0) port as it's the one that's connected to the other USB 
